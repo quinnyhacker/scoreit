@@ -1,0 +1,18 @@
+# Render blueprint. Rooms are held in memory, so keep exactly one instance.
+services:
+  - type: web
+    name: score-it
+    runtime: node
+    plan: starter            # free tier sleeps when idle and would wipe sessions
+    numInstances: 1
+    buildCommand: npm ci --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      # Optional Spotify search. Enter these in the Render dashboard, never in this file.
+      - key: SPOTIFY_CLIENT_ID
+        sync: false
+      - key: SPOTIFY_CLIENT_SECRET
+        sync: false

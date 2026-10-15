@@ -1,0 +1,41 @@
+# Codemagic cloud build: builds the iOS app on a Mac runner and uploads to TestFlight.
+# One-time setup in Codemagic (UI): add an App Store Connect API key under
+# Team settings > Integrations, name it "scoreit_asc", and enable iOS code signing
+# (automatic) for the bundle ID in capacitor.config.json. No secrets belong in this file.
+workflows:
+  ios-testflight:
+    name: Score It iOS -> TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    integrations:
+      app_store_connect: scoreit_asc
+    environment:
+      node: 22
+      xcode: latest
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.quinny.scoreit   # must match appId in capacitor.config.json
+      vars:
+        APP_STORE_APPLE_ID: 6822996952 # numeric Apple ID from App Store Connect > App Information
+    scripts:
+      - name: Install dependencies
+        script: npm ci
+      - name: Sync web assets into the iOS project
+        script: npx cap sync ios
+      - name: Apply signing settings
+        script: xcode-project use-profiles --project ios/App/App.xcodeproj
+      - name: Set build number
+        script: |
+          cd ios/App
+          agvtool new-version -all $(($(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID") + 1))
+      - name: Build IPA
+        script: |
+          xcode-project build-ipa \
+            --project ios/App/App.xcodeproj \
+            --scheme App
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true

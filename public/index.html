@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<title>Score It</title>
+<script src="config.js"></script>
+<style>
+  :root { --bg:#0f1115; --card:#181b22; --line:#2a2f3a; --text:#eef0f4; --mute:#9aa3b2; --accent:#1ed760; --accent-ink:#06210f; --warn:#ff6b6b; }
+  @media (prefers-color-scheme: light) { :root { --bg:#f5f6f8; --card:#fff; --line:#dfe3ea; --text:#14171c; --mute:#5b6472; --accent:#14a44d; --accent-ink:#fff; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.45 system-ui,Segoe UI,Roboto,sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:16px; padding-top:max(16px, env(safe-area-inset-top)); padding-bottom:max(16px, env(safe-area-inset-bottom)); }
+  button { touch-action:manipulation; } input, textarea { font-size:16px; } /* 16px stops iOS zoom-on-focus */
+  h1 { font-size:28px; margin:8px 0 2px; letter-spacing:-.5px; } h1 span { color:var(--accent); }
+  h2 { font-size:18px; margin:0 0 10px; }
+  .sub { color:var(--mute); margin:0 0 18px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px; }
+  input, textarea { width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--line); background:var(--bg); color:var(--text); font:inherit; }
+  input:focus-visible, textarea:focus-visible, button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  button { padding:10px 16px; border-radius:10px; border:1px solid var(--line); background:var(--card); color:var(--text); font:inherit; font-weight:600; cursor:pointer; }
+  button.primary { background:var(--accent); color:var(--accent-ink); border-color:transparent; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; } .row > input { flex:1; min-width:140px; }
+  .stack > * + * { margin-top:10px; }
+  .scene img { width:100%; max-height:420px; object-fit:contain; border-radius:10px; background:#000; display:block; }
+  .scene .prompt { font-size:22px; font-weight:700; text-align:center; padding:28px 12px; }
+  .caption { color:var(--mute); text-align:center; margin-top:8px; }
+  .code { font:700 30px ui-monospace,Consolas,monospace; letter-spacing:6px; color:var(--accent); }
+  .players { display:flex; flex-wrap:wrap; gap:8px; }
+  .chip { padding:4px 10px; border:1px solid var(--line); border-radius:99px; font-size:14px; }
+  .chip.done { border-color:var(--accent); } .chip b { color:var(--accent); margin-left:6px; }
+  .pick { display:flex; gap:12px; align-items:flex-start; }
+  .pick iframe { border:0; border-radius:12px; width:100%; height:152px; flex:1; }
+  .pick .side { width:120px; flex:none; text-align:center; }
+  .err { color:var(--warn); min-height:1.3em; margin:6px 0 0; }
+  .res { border:1px solid var(--line); border-radius:12px; padding:12px; margin-top:10px; }
+  .res.top { border-color:var(--accent); }
+  .res small { color:var(--mute); } .search-hit { display:flex; gap:10px; align-items:center; padding:6px; border-radius:10px; cursor:pointer; }
+  .search-hit:hover { background:var(--bg); } .search-hit img { width:44px; height:44px; border-radius:6px; }
+  .tabs button.on { border-color:var(--accent); color:var(--accent); }
+  @media (max-width:560px) { .pick { flex-direction:column; } .pick .side { width:100%; } }
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+const $app = document.getElementById('app');
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const PROMPTS = [
+  'Walking away in slow motion from a huge explosion',
+  'The last day of summer vacation',
+  'A awkward elevator ride with your boss',
+  'Sprinting for a bus you will definitely miss',
+  'The villain finally reveals their master plan',
+  'Montage: getting ready for the big game',
+  'A cat knocking a glass off a table, with total confidence',
+  'Arriving at a party where you know nobody',
+  'Driving alone at 3 AM through an empty city',
+  'The wedding dance floor at 11:45 PM',
+];
+let session = null; try { session = JSON.parse(sessionStorage.getItem('scoreit') || 'null'); } catch {}
+let state = null, cfg = { search: false }, err = '', sceneKind = 'text', uploaded = '', pickTab = 'link';
+
+async function api(path, body) {
+  const opt = body ? { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ...body, ...(session||{}) }) } : {};
+  const r = await fetch((window.SCOREIT_SERVER || '') + '/api/' + path, opt);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || 'Request failed');
+  return j;
+}
+const act = (path, body) => api(path, body).then(() => { err=''; poll(true); }).catch((e) => { err = e.message; setErr(); });
+function setErr() { const el = document.getElementById('err'); if (el) el.textContent = err; }
+function save(s) { session = s; sessionStorage.setItem('scoreit', JSON.stringify(s)); }
+function leave() { sessionStorage.removeItem('scoreit'); session = null; state = null; render(); }
+
+async function poll(force) {
+  if (!session) return;
+  try {
+    const s = await api(`state?code=${session.code}&pid=${session.pid}&v=${force ? 0 : (state?.v ?? 0)}`);
+    if (!s.unchanged) { state = s; render(); }
+  } catch (e) { if (/not found/i.test(e.message)) leave(); }
+}
+setInterval(() => poll(false), 1500);
+
+function scoreboard() {
+  const ps = [...state.players].sort((a, b) => b.score - a.score);
+  return `<div class="card"><h2>Players</h2><div class="players">${ps.map((p) => {
+    const done = state.phase === 'picking' ? p.picked : state.phase === 'voting' ? p.voted : false;
+    return `<span class="chip ${done ? 'done' : ''}">${esc(p.name)}${p.isHost ? ' 👑' : ''}<b>${p.score}</b></span>`;
+  }).join('')}</div></div>`;
+}
+function sceneCard() {
+  const s = state.scene; if (!s) return '';
+  const body = s.kind === 'image' ? `<img src="${esc(s.url)}" alt="Scene to score" referrerpolicy="no-referrer">` : `<div class="prompt">${esc(s.caption)}</div>`;
+  return `<div class="card scene"><h2>Round ${state.round}: score this scene</h2>${body}${s.kind === 'image' && s.caption ? `<div class="caption">${esc(s.caption)}</div>` : ''}</div>`;
+}
+const embed = (id) => `<iframe src="https://open.spotify.com/embed/track/${esc(id)}" allow="encrypted-media" loading="lazy" title="Spotify player"></iframe>`;
+
+function renderHome() {
+  $app.innerHTML = `<h1>Score <span>It</span></h1><p class="sub">Pick the perfect song for the scene. Friends vote on whose soundtrack nails it.</p>
+  <div class="card stack"><h2>Your name</h2><input id="name" maxlength="20" placeholder="e.g. Quinn" autocomplete="nickname">
+    <div class="row"><button class="primary" id="create">Host a new session</button></div></div>
+  <div class="card stack"><h2>Join a session</h2><div class="row"><input id="code" maxlength="4" placeholder="CODE" style="text-transform:uppercase"><button id="join">Join</button></div></div>
+  <p class="err" id="err" role="alert">${esc(err)}</p>`;
+  const go = (p, b) => api(p, b).then((r) => { err=''; save({ code:r.code, pid:r.pid }); poll(true); }).catch((e) => { err=e.message; setErr(); });
+  document.getElementById('create').onclick = () => go('create', { name: document.getElementById('name').value });
+  document.getElementById('join').onclick = () => go('join', { name: document.getElementById('name').value, code: document.getElementById('code').value });
+}
+
+function renderSetup() {
+  const isText = sceneKind === 'text';
+  return `<div class="card stack"><h2>Choose a scene</h2>
+    <div class="row tabs"><button data-k="text" class="${isText ? 'on' : ''}">Describe a scene</button><button data-k="image" class="${isText ? '' : 'on'}">Use an image</button></div>
+    ${isText ? `<textarea id="cap" rows="2" maxlength="200" placeholder="Describe the scene..."></textarea><button id="rand">🎲 Random scene</button>`
+    : `<input id="url" placeholder="https:// image link"><div class="row"><span class="sub" style="margin:0">or</span><input type="file" id="file" accept="image/png,image/jpeg,image/gif,image/webp"></div><input id="cap" maxlength="200" placeholder="Optional caption">`}
+    <button class="primary" id="start">Start round</button></div>`;
+}
+
+function renderPicking() {
+  const my = state.myPick;
+  const searchBox = cfg.search ? `<div class="row tabs"><button data-t="link" class="${pickTab==='link'?'on':''}">Paste link</button><button data-t="search" class="${pickTab==='search'?'on':''}">Search</button></div>` : '';
+  const input = pickTab === 'search' && cfg.search
+    ? `<div class="row"><input id="q" placeholder="Song or artist"><button id="go">Search</button></div><div id="hits"></div>`
+    : `<div class="row"><input id="link" placeholder="https://open.spotify.com/track/..."><button class="primary" id="submit">Lock it in</button></div>
+       <p class="sub" style="margin:0">In Spotify: ••• → Share → Copy Song Link</p>`;
+  const nPicked = state.players.filter((p) => p.picked).length;
+  return `<div class="card stack"><h2>Your pick</h2>
+    ${my ? `<div class="pick">${embed(my.trackId)}</div><p class="sub" style="margin:0">Locked in: ${esc(my.title)}. You can change it until voting starts.</p>` : ''}
+    ${searchBox}${input}</div>
+    ${state.me.isHost ? `<button class="primary" id="tovote" ${nPicked ? '' : 'disabled'}>Start voting (${nPicked}/${state.players.length} picked)</button>` : `<p class="sub">Waiting for the host to start voting (${nPicked}/${state.players.length} picked)…</p>`}`;
+}
+
+function renderVoting() {
+  const cards = state.picks.map((p) => `<div class="card"><div class="pick">${embed(p.trackId)}<div class="side">
+    ${p.mine ? '<small>Your song</small>' : `<button class="${state.myVote === p.id ? 'primary' : ''}" data-vote="${esc(p.id)}">${state.myVote === p.id ? '✓ Voted' : 'Vote'}</button>`}</div></div></div>`).join('');
+  const nVoted = state.players.filter((p) => p.voted).length;
+  return `<h2>Which song scores the scene best?</h2>${cards}
+    ${state.me.isHost ? `<button class="primary" id="toresults">Reveal results (${nVoted}/${state.players.length} voted)</button>` : `<p class="sub">Votes in: ${nVoted}/${state.players.length}</p>`}`;
+}
+
+function renderResults() {
+  const cards = state.picks.map((p, i) => `<div class="res ${i === 0 && p.voters.length ? 'top' : ''}"><div class="pick">${embed(p.trackId)}<div class="side">
+    <div style="font-size:26px;font-weight:800">${p.voters.length * 100}</div><small>pts</small></div></div>
+    <div style="margin-top:8px"><b>${esc(p.author)}</b> picked <i>${esc(p.title)}</i><br><small>Votes: ${p.voters.length ? p.voters.map(esc).join(', ') : 'none'}</small></div></div>`).join('');
+  return `<div class="card"><h2>Results</h2>${cards}</div>
+    ${state.me.isHost ? '' : `<p class="sub">Waiting for the host to pick the next scene…</p>`}`;
+}
+
+function render() {
+  if (!session || !state) return renderHome();
+  const active = document.activeElement?.id;
+  let body = '';
+  if (state.phase === 'setup') body = state.me.isHost ? renderSetup() : '<div class="card"><p class="sub" style="margin:0">Waiting for the host to choose a scene…</p></div>';
+  else body = sceneCard() + ({ picking: renderPicking, voting: renderVoting, results: renderResults }[state.phase])();
+  if (state.phase === 'results' && state.me.isHost) body = sceneCard() + renderResults();
+  if (state.phase === 'results' && state.me.isHost) body += renderSetup();
+  $app.innerHTML = `<h1>Score <span>It</span></h1>
+    <div class="card row" style="justify-content:space-between"><div><small class="sub">Room code — share with friends</small><div class="code">${esc(state.code)}</div></div><button id="leave">Leave</button></div>
+    ${body}${scoreboard()}<p class="err" id="err" role="alert">${esc(err)}</p>`;
+  wire(); if (active) document.getElementById(active)?.focus();
+}
+
+function wire() {
+  const $ = (id) => document.getElementById(id);
+  $('leave').onclick = leave;
+  document.querySelectorAll('[data-k]').forEach((b) => b.onclick = () => { sceneKind = b.dataset.k; render(); });
+  document.querySelectorAll('[data-t]').forEach((b) => b.onclick = () => { pickTab = b.dataset.t; render(); });
+  document.querySelectorAll('[data-vote]').forEach((b) => b.onclick = () => act('vote', { target: b.dataset.vote }));
+  if ($('rand')) $('rand').onclick = () => { $('cap').value = PROMPTS[Math.floor(Math.random() * PROMPTS.length)]; };
+  if ($('file')) $('file').onchange = (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    if (f.size > 2 * 1024 * 1024) { err = 'Image must be under 2 MB'; setErr(); e.target.value = ''; return; }
+    const rd = new FileReader(); rd.onload = () => { uploaded = rd.result; }; rd.readAsDataURL(f);
+  };
+  if ($('start')) $('start').onclick = () => {
+    const caption = $('cap').value;
+    const scene = sceneKind === 'text' ? { kind:'text', caption } : { kind:'image', url: uploaded || $('url').value.trim(), caption };
+    uploaded = ''; act('scene', { scene });
+  };
+  if ($('submit')) $('submit').onclick = () => act('pick', { url: $('link').value });
+  if ($('tovote')) $('tovote').onclick = () => act('phase', { to:'voting' });
+  if ($('toresults')) $('toresults').onclick = () => act('phase', { to:'results' });
+  if ($('go')) {
+    const run = async () => {
+      const hits = await api('search?q=' + encodeURIComponent($('q').value)).catch((e) => { err = e.message; setErr(); return []; });
+      $('hits').innerHTML = hits.map((h) => `<div class="search-hit" data-id="${esc(h.id)}" data-title="${esc(h.title + ' — ' + h.artist)}">
+        <img src="${esc(h.thumb)}" alt=""><div><b>${esc(h.title)}</b><br><small>${esc(h.artist)}</small></div></div>`).join('');
+      document.querySelectorAll('.search-hit').forEach((el) => el.onclick = () => act('pick', { trackId: el.dataset.id, title: el.dataset.title }));
+    };
+    $('go').onclick = run; $('q').onkeydown = (e) => { if (e.key === 'Enter') run(); };
+  }
+}
+
+fetch((window.SCOREIT_SERVER || '') + '/api/config').then((r) => r.json()).then((c) => { cfg = c; }).catch(() => {});
+render(); poll(true);
+</script>
+</body>
+</html>

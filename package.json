@@ -1,0 +1,19 @@
+{
+  "name": "score-it",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Score It - pick the Spotify song that best scores a scene",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "ios:sync": "cap sync ios"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/ios": "^8.5.3"
+  }
+}

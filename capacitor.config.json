@@ -1,0 +1,6 @@
+{
+  "appId": "com.quinny.scoreit",
+  "appName": "Score It",
+  "webDir": "public",
+  "ios": { "contentInset": "never", "backgroundColor": "#0f1115" }
+}
