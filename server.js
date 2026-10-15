@@ -103,7 +103,7 @@ function viewFor(room, pid) {
     me: { id: pid, name: me.name, isHost: pid === room.hostId }, players, picks: [], myPick: null, myVote: room.votes[pid] || null,
   };
   const mine = room.picks[pid];
-  if (mine) out.myPick = { title: mine.title, trackId: mine.trackId };
+  if (mine) out.myPick = { title: mine.title, trackId: mine.trackId, thumb: mine.thumb };
   if (room.phase === 'voting') {
     out.picks = room.order.map((id) => {
       const p = room.pickById[id];
