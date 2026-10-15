@@ -3,77 +3,152 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0f1115">
+<meta name="theme-color" content="#0b0d12">
 <title>Score It</title>
 <script src="config.js"></script>
 <style>
-  :root { --bg:#0f1115; --card:#181b22; --line:#2a2f3a; --text:#eef0f4; --mute:#9aa3b2; --accent:#1ed760; --accent-ink:#06210f; --warn:#ff6b6b; }
-  @media (prefers-color-scheme: light) { :root { --bg:#f5f6f8; --card:#fff; --line:#dfe3ea; --text:#14171c; --mute:#5b6472; --accent:#14a44d; --accent-ink:#fff; } }
-  * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.45 system-ui,Segoe UI,Roboto,sans-serif; }
-  main { max-width:760px; margin:0 auto; padding:16px; padding-top:max(16px, env(safe-area-inset-top)); padding-bottom:max(16px, env(safe-area-inset-bottom)); }
-  button { touch-action:manipulation; } input, textarea { font-size:16px; } /* 16px stops iOS zoom-on-focus */
-  h1 { font-size:28px; margin:8px 0 2px; letter-spacing:-.5px; } h1 span { color:var(--accent); }
-  h2 { font-size:18px; margin:0 0 10px; }
-  .sub { color:var(--mute); margin:0 0 18px; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px; }
-  input, textarea { width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--line); background:var(--bg); color:var(--text); font:inherit; }
-  input:focus-visible, textarea:focus-visible, button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-  button { padding:10px 16px; border-radius:10px; border:1px solid var(--line); background:var(--card); color:var(--text); font:inherit; font-weight:600; cursor:pointer; }
-  button.primary { background:var(--accent); color:var(--accent-ink); border-color:transparent; }
-  button:disabled { opacity:.5; cursor:not-allowed; }
-  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; } .row > input { flex:1; min-width:140px; }
-  .stack > * + * { margin-top:10px; }
-  .scene img { width:100%; max-height:420px; object-fit:contain; border-radius:10px; background:#000; display:block; }
-  .scene .prompt { font-size:22px; font-weight:700; text-align:center; padding:28px 12px; }
-  .caption { color:var(--mute); text-align:center; margin-top:8px; }
-  .code { font:700 30px ui-monospace,Consolas,monospace; letter-spacing:6px; color:var(--accent); }
+  :root {
+    --bg:#0b0d12; --card:rgba(255,255,255,.045); --card-solid:#14171f; --line:rgba(255,255,255,.09);
+    --text:#f1f3f8; --mute:#98a1b3; --accent:#1ed760; --accent-2:#7c5cff; --warn:#ff6b6b;
+    --ease:cubic-bezier(.22,.9,.28,1); --spring:cubic-bezier(.34,1.56,.64,1);
+    color-scheme: dark;
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html { scroll-behavior:smooth; }
+  body { margin:0; color:var(--text); font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+    background:var(--bg); min-height:100vh; overflow-x:hidden; }
+  body::before { content:""; position:fixed; inset:-20%; z-index:-1; pointer-events:none;
+    background: radial-gradient(40% 35% at 15% 10%, rgba(124,92,255,.28), transparent 70%),
+                radial-gradient(35% 35% at 90% 20%, rgba(30,215,96,.18), transparent 70%),
+                radial-gradient(40% 40% at 60% 100%, rgba(255,107,157,.12), transparent 70%);
+    animation: drift 24s ease-in-out infinite alternate; }
+  @keyframes drift { to { transform: translate3d(-3%,2%,0) scale(1.06); } }
+  main { max-width:780px; margin:0 auto; padding:16px; padding-top:max(16px, env(safe-area-inset-top)); padding-bottom:max(40px, env(safe-area-inset-bottom)); }
+  h1 { font-size:clamp(34px,8vw,52px); line-height:1; margin:18px 0 6px; letter-spacing:-1.5px; font-weight:800; }
+  h1 span { background:linear-gradient(90deg,var(--accent),#8bf5b0); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  h2 { font-size:15px; margin:0 0 12px; font-weight:700; letter-spacing:.2px; color:var(--mute); text-transform:uppercase; }
+  .sub { color:var(--mute); margin:0 0 20px; } small, .small { color:var(--mute); font-size:13px; }
+
+  .card { background:var(--card); border:1px solid var(--line); border-radius:20px; padding:18px; margin-bottom:14px;
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); box-shadow:0 10px 30px -18px rgba(0,0,0,.7); }
+  .stack > * + * { margin-top:12px; } .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; } .grow { flex:1; min-width:130px; }
+  input, textarea { width:100%; padding:12px 14px; border-radius:14px; border:1px solid var(--line); background:rgba(0,0,0,.35);
+    color:var(--text); font:inherit; font-size:16px; transition:border-color .2s, box-shadow .2s; }
+  input::placeholder, textarea::placeholder { color:#6b7487; }
+  input:focus, textarea:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 4px rgba(30,215,96,.15); }
+  input[type=file] { padding:10px; }
+  button { padding:12px 18px; border-radius:14px; border:1px solid var(--line); background:rgba(255,255,255,.07); color:var(--text);
+    font:inherit; font-weight:650; cursor:pointer; touch-action:manipulation;
+    transition:transform .25s var(--spring), background .2s, border-color .2s, box-shadow .25s, opacity .2s; }
+  button:hover { background:rgba(255,255,255,.12); transform:translateY(-1px); }
+  button:active { transform:scale(.96); transition-duration:.08s; }
+  button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  button.primary { background:linear-gradient(135deg,var(--accent),#5df09a); color:#04210f; border-color:transparent; box-shadow:0 8px 24px -10px rgba(30,215,96,.7); }
+  button.primary:hover { box-shadow:0 12px 28px -10px rgba(30,215,96,.9); }
+  button.block { width:100%; padding:15px; font-size:17px; }
+  button:disabled { opacity:.4; cursor:not-allowed; transform:none; box-shadow:none; }
+  .tabs { display:flex; gap:6px; padding:4px; background:rgba(0,0,0,.3); border-radius:16px; overflow-x:auto; scrollbar-width:none; }
+  .tabs button { flex:1; white-space:nowrap; background:transparent; border-color:transparent; padding:9px 12px; font-size:14px; }
+  .tabs button.on { background:rgba(255,255,255,.12); color:#fff; box-shadow:0 2px 10px -4px rgba(0,0,0,.6); }
+
+  /* header */
+  .head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }
+  .brand { font-weight:800; font-size:20px; letter-spacing:-.5px; } .brand span { color:var(--accent); }
+  .codepill { display:flex; align-items:center; gap:10px; padding:8px 14px; border-radius:99px; background:var(--card); border:1px solid var(--line); cursor:pointer; }
+  .codepill b { font:700 20px ui-monospace,Consolas,monospace; letter-spacing:5px; color:var(--accent); }
+  .codepill small { font-size:11px; text-transform:uppercase; letter-spacing:1px; }
+
+  /* scene stage */
+  .stage { position:relative; aspect-ratio:16/9; border-radius:22px; overflow:hidden; background:#000; border:1px solid var(--line);
+    box-shadow:0 30px 60px -30px rgba(0,0,0,.9); }
+  .stage .bg { position:absolute; inset:-10%; width:120%; height:120%; object-fit:cover; filter:blur(28px) brightness(.6); }
+  .stage .fg, .stage video, .stage iframe { position:absolute; inset:0; width:100%; height:100%; border:0; }
+  .stage .fg, .stage video { object-fit:contain; }
+  .stage.text { display:grid; place-items:center; padding:28px; text-align:center; background:linear-gradient(135deg,var(--g1),var(--g2)); }
+  .stage.text p { margin:0; font-size:clamp(20px,5vw,34px); font-weight:800; line-height:1.2; text-shadow:0 2px 20px rgba(0,0,0,.35); }
+  .scene-meta { display:flex; justify-content:space-between; gap:10px; margin:10px 4px 0; flex-wrap:wrap; }
+  .scene-meta .cap { font-weight:600; } .scene-meta a { color:var(--mute); }
+  .round-tag { display:inline-block; padding:3px 10px; border-radius:99px; background:rgba(30,215,96,.14); color:var(--accent); font-size:12px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; margin-bottom:10px; }
+
+  /* scene browser */
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:8px; }
+  .tile { position:relative; aspect-ratio:16/10; border-radius:12px; overflow:hidden; cursor:pointer; border:2px solid transparent; padding:0; background:#000;
+    transition:transform .3s var(--spring), border-color .2s; }
+  .tile:hover { transform:scale(1.04); } .tile img { width:100%; height:100%; object-fit:cover; display:block; }
+  .tile.sel { border-color:var(--accent); } .tile .play { position:absolute; right:6px; bottom:6px; background:rgba(0,0,0,.65); border-radius:99px; font-size:11px; padding:2px 8px; }
+  .skeleton { aspect-ratio:16/10; border-radius:12px; background:linear-gradient(100deg,rgba(255,255,255,.04) 30%,rgba(255,255,255,.1) 50%,rgba(255,255,255,.04) 70%); background-size:200% 100%; animation:shimmer 1.2s linear infinite; }
+  @keyframes shimmer { to { background-position:-200% 0; } }
+  .preview { display:flex; gap:12px; align-items:center; padding:10px; border-radius:14px; background:rgba(30,215,96,.08); border:1px solid rgba(30,215,96,.3); }
+  .preview .th { width:96px; aspect-ratio:16/10; border-radius:8px; object-fit:cover; background:#000; flex:none; display:grid; place-items:center; font-size:11px; padding:4px; text-align:center; overflow:hidden; }
+
+  /* players */
   .players { display:flex; flex-wrap:wrap; gap:8px; }
-  .chip { padding:4px 10px; border:1px solid var(--line); border-radius:99px; font-size:14px; }
-  .chip.done { border-color:var(--accent); } .chip b { color:var(--accent); margin-left:6px; }
-  .pick { display:flex; gap:12px; align-items:flex-start; }
-  .pick iframe { border:0; border-radius:12px; width:100%; height:152px; flex:1; }
-  .pick .side { width:120px; flex:none; text-align:center; }
-  .err { color:var(--warn); min-height:1.3em; margin:6px 0 0; }
-  .res { border:1px solid var(--line); border-radius:12px; padding:12px; margin-top:10px; }
-  .res.top { border-color:var(--accent); }
-  .res small { color:var(--mute); } .search-hit { display:flex; gap:10px; align-items:center; padding:6px; border-radius:10px; cursor:pointer; }
-  .search-hit:hover { background:var(--bg); } .search-hit img { width:44px; height:44px; border-radius:6px; }
-  .tabs button.on { border-color:var(--accent); color:var(--accent); }
-  @media (max-width:560px) { .pick { flex-direction:column; } .pick .side { width:100%; } }
+  .chip { display:flex; align-items:center; gap:8px; padding:5px 12px 5px 5px; border-radius:99px; background:rgba(0,0,0,.28); border:1px solid var(--line); font-size:14px; transition:border-color .3s, transform .3s var(--spring); }
+  .chip.done { border-color:var(--accent); transform:scale(1.03); }
+  .av { width:26px; height:26px; border-radius:50%; display:grid; place-items:center; font-weight:800; font-size:12px; color:#0b0d12; }
+  .chip b { color:var(--accent); font-variant-numeric:tabular-nums; }
+
+  /* picks */
+  .song { position:relative; }
+  .song iframe { display:block; width:100%; height:152px; border:0; border-radius:14px; }
+  .votebar { display:flex; justify-content:space-between; align-items:center; margin-top:10px; gap:10px; }
+  .votebtn.voted { background:linear-gradient(135deg,var(--accent),#5df09a); color:#04210f; border-color:transparent; }
+  .res { border-radius:20px; padding:14px; margin-bottom:12px; background:var(--card); border:1px solid var(--line); }
+  .res.top { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent), 0 16px 40px -18px rgba(30,215,96,.5); }
+  .pts { font-size:34px; font-weight:800; letter-spacing:-1px; font-variant-numeric:tabular-nums; }
+  .err { color:var(--warn); min-height:1.4em; margin:6px 2px; font-size:14px; }
+  .hit { display:flex; gap:12px; align-items:center; padding:8px; border-radius:14px; cursor:pointer; transition:background .2s, transform .25s var(--spring); }
+  .hit:hover { background:rgba(255,255,255,.07); transform:translateX(3px); } .hit img { width:46px; height:46px; border-radius:8px; }
+  .wait { display:flex; align-items:center; gap:10px; color:var(--mute); }
+  .dots span { display:inline-block; width:7px; height:7px; margin-right:4px; border-radius:50%; background:var(--accent); animation:bob 1s infinite ease-in-out; }
+  .dots span:nth-child(2) { animation-delay:.15s } .dots span:nth-child(3) { animation-delay:.3s }
+  @keyframes bob { 0%,80%,100% { transform:translateY(0); opacity:.4 } 40% { transform:translateY(-6px); opacity:1 } }
+
+  /* motion */
+  .enter { animation:rise .55s var(--ease) both; }
+  .stagger > * { animation:rise .55s var(--ease) both; } .stagger > *:nth-child(2){animation-delay:.08s} .stagger > *:nth-child(3){animation-delay:.16s}
+  .stagger > *:nth-child(4){animation-delay:.24s} .stagger > *:nth-child(5){animation-delay:.32s} .stagger > *:nth-child(n+6){animation-delay:.4s}
+  @keyframes rise { from { opacity:0; transform:translateY(16px) scale(.985); } to { opacity:1; transform:none; } }
+  .bump { animation:bump .5s var(--spring); } @keyframes bump { 40% { transform:scale(1.35); } }
+  #confetti { position:fixed; inset:0; pointer-events:none; overflow:hidden; z-index:50; }
+  #confetti i { position:absolute; top:-12px; width:9px; height:14px; border-radius:2px; animation:fall var(--d) var(--ease) forwards; }
+  @keyframes fall { to { transform:translate3d(var(--x),105vh,0) rotate(var(--r)); opacity:.9; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; } }
 </style>
 </head>
 <body>
 <main id="app"></main>
+<div id="confetti" aria-hidden="true"></div>
 <script>
 const $app = document.getElementById('app');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 const PROMPTS = [
-  'Walking away in slow motion from a huge explosion',
-  'The last day of summer vacation',
-  'A awkward elevator ride with your boss',
-  'Sprinting for a bus you will definitely miss',
-  'The villain finally reveals their master plan',
-  'Montage: getting ready for the big game',
-  'A cat knocking a glass off a table, with total confidence',
-  'Arriving at a party where you know nobody',
-  'Driving alone at 3 AM through an empty city',
-  'The wedding dance floor at 11:45 PM',
+  'Walking away in slow motion from a huge explosion', 'The last day of summer vacation', 'An awkward elevator ride with your boss',
+  'Sprinting for a bus you will definitely miss', 'The villain finally reveals their master plan', 'Montage: getting ready for the big game',
+  'A cat knocking a glass off a table with total confidence', 'Arriving at a party where you know nobody',
+  'Driving alone at 3 AM through an empty city', 'The wedding dance floor at 11:45 PM',
 ];
-let session = null; try { session = JSON.parse(sessionStorage.getItem('scoreit') || 'null'); } catch {}
-let state = null, cfg = { search: false }, err = '', sceneKind = 'text', uploaded = '', pickTab = 'link';
+const SEARCH_IDEAS = ['city night', 'road trip', 'ocean', 'rain', 'dance', 'sunrise', 'forest', 'neon', 'party', 'mountains'];
+const COLORS = ['#ff8a5c','#ffd166','#7ee081','#5ec8ff','#a98bff','#ff7eb6','#4de1c1'];
+const hue = (s) => COLORS[[...String(s)].reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length];
 
+let session = null; try { session = JSON.parse(sessionStorage.getItem('scoreit') || 'null'); } catch {}
+let state = null, cfg = { search:false, scenes:false };
+const ui = { err:'', tab:null, type:'image', results:null, loading:false, sel:null, pickTab:'link', hits:null, name:'', code:'', cap:'', url:'', q:'', sq:'', link:'', text:'' };
+const last = {}; let inRoom = false, lastPhaseKey = '';
+
+const API = (window.SCOREIT_SERVER || '') + '/api/';
 async function api(path, body) {
-  const opt = body ? { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ...body, ...(session||{}) }) } : {};
-  const r = await fetch((window.SCOREIT_SERVER || '') + '/api/' + path, opt);
+  const opt = body ? { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ ...body, ...(session || {}) }) } : {};
+  const r = await fetch(API + path, opt);
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error || 'Request failed');
   return j;
 }
-const act = (path, body) => api(path, body).then(() => { err=''; poll(true); }).catch((e) => { err = e.message; setErr(); });
-function setErr() { const el = document.getElementById('err'); if (el) el.textContent = err; }
-function save(s) { session = s; sessionStorage.setItem('scoreit', JSON.stringify(s)); }
-function leave() { sessionStorage.removeItem('scoreit'); session = null; state = null; render(); }
+const setErr = (m) => { ui.err = m || ''; const el = document.getElementById('err'); if (el) el.textContent = ui.err; };
+const act = (path, body) => api(path, body).then((r) => { setErr(''); poll(true); return r; }).catch((e) => { setErr(e.message); });
+const save = (s) => { session = s; sessionStorage.setItem('scoreit', JSON.stringify(s)); };
+function leave() { sessionStorage.removeItem('scoreit'); session = null; state = null; inRoom = false; Object.keys(last).forEach((k) => delete last[k]); render(); }
 
 async function poll(force) {
   if (!session) return;
@@ -84,116 +159,270 @@ async function poll(force) {
 }
 setInterval(() => poll(false), 1500);
 
-function scoreboard() {
+/* ---------- section helper: only touch the DOM when HTML actually changed ---------- */
+function setSection(id, html, animateKey, force) {
+  const el = document.getElementById(id); if (!el) return;
+  if (last[id] === html && !force) return;
+  const a = document.activeElement;
+  // never replace a section while the user is typing in it (unless the phase changed)
+  if (!force && last[id + ':k'] === animateKey && a && el.contains(a) && /^(INPUT|TEXTAREA)$/.test(a.tagName)) return;
+  const fresh = last[id] === undefined || last[id + ':k'] !== animateKey;
+  last[id] = html; last[id + ':k'] = animateKey;
+  el.innerHTML = html;
+  if (fresh) { el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter'); }
+}
+
+/* ---------- views ---------- */
+const embed = (id) => `<iframe src="https://open.spotify.com/embed/track/${esc(id)}?utm_source=generator&theme=0" allow="encrypted-media; clipboard-write" loading="lazy" title="Spotify player"></iframe>`;
+
+function sceneMedia(s) {
+  if (s.kind === 'text') {
+    const a = hue(s.caption), b = hue(s.caption + '!');
+    return `<div class="stage text" style="--g1:${a};--g2:${b}"><p>${esc(s.caption)}</p></div>`;
+  }
+  let media = '';
+  if (s.kind === 'image') media = `<img class="bg" src="${esc(s.url)}" alt=""><img class="fg" src="${esc(s.url)}" alt="Scene to score" referrerpolicy="no-referrer">`;
+  else if (s.kind === 'video') media = `<video src="${esc(s.url)}" poster="${esc(s.poster || '')}" autoplay muted loop playsinline controls preload="auto"></video>`;
+  else if (s.kind === 'youtube') media = `<iframe src="https://www.youtube-nocookie.com/embed/${esc(s.id)}?rel=0&playsinline=1" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen title="Scene video"></iframe>`;
+  return `<div class="stage">${media}</div>`;
+}
+function stageHtml() {
+  const s = state.scene; if (!s) return '';
+  const credit = s.credit ? `<a href="${esc(s.credit.url)}" target="_blank" rel="noopener noreferrer">${esc(s.credit.name)} · Pexels</a>` : '';
+  return `<span class="round-tag">Round ${state.round} · Score this scene</span>${sceneMedia(s)}
+    <div class="scene-meta"><span class="cap">${s.kind === 'text' ? '' : esc(s.caption)}</span><small>${credit}</small></div>`;
+}
+
+function headHtml() {
+  return `<div class="head"><div class="brand">Score <span>It</span></div>
+    <div class="row"><div class="codepill" data-act="copy" title="Tap to copy"><small>Room</small><b>${esc(state.code)}</b></div><button data-act="leave" aria-label="Leave session">Leave</button></div></div>`;
+}
+
+function playersHtml() {
   const ps = [...state.players].sort((a, b) => b.score - a.score);
   return `<div class="card"><h2>Players</h2><div class="players">${ps.map((p) => {
     const done = state.phase === 'picking' ? p.picked : state.phase === 'voting' ? p.voted : false;
-    return `<span class="chip ${done ? 'done' : ''}">${esc(p.name)}${p.isHost ? ' 👑' : ''}<b>${p.score}</b></span>`;
+    return `<span class="chip ${done ? 'done' : ''}"><span class="av" style="background:${hue(p.name)}">${esc(p.name[0] || '?').toUpperCase()}</span>${esc(p.name)}${p.isHost ? ' 👑' : ''} <b data-pid="${esc(p.id)}" data-score="${p.score}">${p.score}</b></span>`;
   }).join('')}</div></div>`;
 }
-function sceneCard() {
-  const s = state.scene; if (!s) return '';
-  const body = s.kind === 'image' ? `<img src="${esc(s.url)}" alt="Scene to score" referrerpolicy="no-referrer">` : `<div class="prompt">${esc(s.caption)}</div>`;
-  return `<div class="card scene"><h2>Round ${state.round}: score this scene</h2>${body}${s.kind === 'image' && s.caption ? `<div class="caption">${esc(s.caption)}</div>` : ''}</div>`;
-}
-const embed = (id) => `<iframe src="https://open.spotify.com/embed/track/${esc(id)}" allow="encrypted-media" loading="lazy" title="Spotify player"></iframe>`;
 
-function renderHome() {
-  $app.innerHTML = `<h1>Score <span>It</span></h1><p class="sub">Pick the perfect song for the scene. Friends vote on whose soundtrack nails it.</p>
-  <div class="card stack"><h2>Your name</h2><input id="name" maxlength="20" placeholder="e.g. Quinn" autocomplete="nickname">
-    <div class="row"><button class="primary" id="create">Host a new session</button></div></div>
-  <div class="card stack"><h2>Join a session</h2><div class="row"><input id="code" maxlength="4" placeholder="CODE" style="text-transform:uppercase"><button id="join">Join</button></div></div>
-  <p class="err" id="err" role="alert">${esc(err)}</p>`;
-  const go = (p, b) => api(p, b).then((r) => { err=''; save({ code:r.code, pid:r.pid }); poll(true); }).catch((e) => { err=e.message; setErr(); });
-  document.getElementById('create').onclick = () => go('create', { name: document.getElementById('name').value });
-  document.getElementById('join').onclick = () => go('join', { name: document.getElementById('name').value, code: document.getElementById('code').value });
+/* --- scene setup (host) --- */
+function selPreview() {
+  const s = ui.sel; if (!s) return '';
+  const th = s.kind === 'text' ? `<div class="th" style="background:${hue(s.caption)};color:#0b0d12">Text</div>`
+    : s.kind === 'youtube' ? `<div class="th" style="background:#222">YouTube</div>`
+    : `<img class="th" src="${esc(s.thumb || s.poster || s.url)}" alt="">`;
+  const label = { image:'Image', video:'Video clip', youtube:'YouTube video', text: s.caption }[s.kind];
+  return `<div class="preview">${th}<div class="grow"><b>${esc(label)}</b><br><small>Selected</small></div><button data-act="clear-scene">Change</button></div>`;
 }
-
-function renderSetup() {
-  const isText = sceneKind === 'text';
-  return `<div class="card stack"><h2>Choose a scene</h2>
-    <div class="row tabs"><button data-k="text" class="${isText ? 'on' : ''}">Describe a scene</button><button data-k="image" class="${isText ? '' : 'on'}">Use an image</button></div>
-    ${isText ? `<textarea id="cap" rows="2" maxlength="200" placeholder="Describe the scene..."></textarea><button id="rand">🎲 Random scene</button>`
-    : `<input id="url" placeholder="https:// image link"><div class="row"><span class="sub" style="margin:0">or</span><input type="file" id="file" accept="image/png,image/jpeg,image/gif,image/webp"></div><input id="cap" maxlength="200" placeholder="Optional caption">`}
-    <button class="primary" id="start">Start round</button></div>`;
-}
-
-function renderPicking() {
-  const my = state.myPick;
-  const searchBox = cfg.search ? `<div class="row tabs"><button data-t="link" class="${pickTab==='link'?'on':''}">Paste link</button><button data-t="search" class="${pickTab==='search'?'on':''}">Search</button></div>` : '';
-  const input = pickTab === 'search' && cfg.search
-    ? `<div class="row"><input id="q" placeholder="Song or artist"><button id="go">Search</button></div><div id="hits"></div>`
-    : `<div class="row"><input id="link" placeholder="https://open.spotify.com/track/..."><button class="primary" id="submit">Lock it in</button></div>
-       <p class="sub" style="margin:0">In Spotify: ••• → Share → Copy Song Link</p>`;
-  const nPicked = state.players.filter((p) => p.picked).length;
-  return `<div class="card stack"><h2>Your pick</h2>
-    ${my ? `<div class="pick">${embed(my.trackId)}</div><p class="sub" style="margin:0">Locked in: ${esc(my.title)}. You can change it until voting starts.</p>` : ''}
-    ${searchBox}${input}</div>
-    ${state.me.isHost ? `<button class="primary" id="tovote" ${nPicked ? '' : 'disabled'}>Start voting (${nPicked}/${state.players.length} picked)</button>` : `<p class="sub">Waiting for the host to start voting (${nPicked}/${state.players.length} picked)…</p>`}`;
-}
-
-function renderVoting() {
-  const cards = state.picks.map((p) => `<div class="card"><div class="pick">${embed(p.trackId)}<div class="side">
-    ${p.mine ? '<small>Your song</small>' : `<button class="${state.myVote === p.id ? 'primary' : ''}" data-vote="${esc(p.id)}">${state.myVote === p.id ? '✓ Voted' : 'Vote'}</button>`}</div></div></div>`).join('');
-  const nVoted = state.players.filter((p) => p.voted).length;
-  return `<h2>Which song scores the scene best?</h2>${cards}
-    ${state.me.isHost ? `<button class="primary" id="toresults">Reveal results (${nVoted}/${state.players.length} voted)</button>` : `<p class="sub">Votes in: ${nVoted}/${state.players.length}</p>`}`;
-}
-
-function renderResults() {
-  const cards = state.picks.map((p, i) => `<div class="res ${i === 0 && p.voters.length ? 'top' : ''}"><div class="pick">${embed(p.trackId)}<div class="side">
-    <div style="font-size:26px;font-weight:800">${p.voters.length * 100}</div><small>pts</small></div></div>
-    <div style="margin-top:8px"><b>${esc(p.author)}</b> picked <i>${esc(p.title)}</i><br><small>Votes: ${p.voters.length ? p.voters.map(esc).join(', ') : 'none'}</small></div></div>`).join('');
-  return `<div class="card"><h2>Results</h2>${cards}</div>
-    ${state.me.isHost ? '' : `<p class="sub">Waiting for the host to pick the next scene…</p>`}`;
-}
-
-function render() {
-  if (!session || !state) return renderHome();
-  const active = document.activeElement?.id;
+function setupHtml() {
+  const tabs = [...(cfg.scenes ? [['browse', 'Browse']] : []), ['link', 'Link'], ['upload', 'Upload'], ['text', 'Describe']];
+  const tab = tabs.some((t) => t[0] === effectiveTab()) ? effectiveTab() : tabs[0][0];
   let body = '';
-  if (state.phase === 'setup') body = state.me.isHost ? renderSetup() : '<div class="card"><p class="sub" style="margin:0">Waiting for the host to choose a scene…</p></div>';
-  else body = sceneCard() + ({ picking: renderPicking, voting: renderVoting, results: renderResults }[state.phase])();
-  if (state.phase === 'results' && state.me.isHost) body = sceneCard() + renderResults();
-  if (state.phase === 'results' && state.me.isHost) body += renderSetup();
-  $app.innerHTML = `<h1>Score <span>It</span></h1>
-    <div class="card row" style="justify-content:space-between"><div><small class="sub">Room code — share with friends</small><div class="code">${esc(state.code)}</div></div><button id="leave">Leave</button></div>
-    ${body}${scoreboard()}<p class="err" id="err" role="alert">${esc(err)}</p>`;
-  wire(); if (active) document.getElementById(active)?.focus();
-}
-
-function wire() {
-  const $ = (id) => document.getElementById(id);
-  $('leave').onclick = leave;
-  document.querySelectorAll('[data-k]').forEach((b) => b.onclick = () => { sceneKind = b.dataset.k; render(); });
-  document.querySelectorAll('[data-t]').forEach((b) => b.onclick = () => { pickTab = b.dataset.t; render(); });
-  document.querySelectorAll('[data-vote]').forEach((b) => b.onclick = () => act('vote', { target: b.dataset.vote }));
-  if ($('rand')) $('rand').onclick = () => { $('cap').value = PROMPTS[Math.floor(Math.random() * PROMPTS.length)]; };
-  if ($('file')) $('file').onchange = (e) => {
-    const f = e.target.files[0]; if (!f) return;
-    if (f.size > 2 * 1024 * 1024) { err = 'Image must be under 2 MB'; setErr(); e.target.value = ''; return; }
-    const rd = new FileReader(); rd.onload = () => { uploaded = rd.result; }; rd.readAsDataURL(f);
-  };
-  if ($('start')) $('start').onclick = () => {
-    const caption = $('cap').value;
-    const scene = sceneKind === 'text' ? { kind:'text', caption } : { kind:'image', url: uploaded || $('url').value.trim(), caption };
-    uploaded = ''; act('scene', { scene });
-  };
-  if ($('submit')) $('submit').onclick = () => act('pick', { url: $('link').value });
-  if ($('tovote')) $('tovote').onclick = () => act('phase', { to:'voting' });
-  if ($('toresults')) $('toresults').onclick = () => act('phase', { to:'results' });
-  if ($('go')) {
-    const run = async () => {
-      const hits = await api('search?q=' + encodeURIComponent($('q').value)).catch((e) => { err = e.message; setErr(); return []; });
-      $('hits').innerHTML = hits.map((h) => `<div class="search-hit" data-id="${esc(h.id)}" data-title="${esc(h.title + ' — ' + h.artist)}">
-        <img src="${esc(h.thumb)}" alt=""><div><b>${esc(h.title)}</b><br><small>${esc(h.artist)}</small></div></div>`).join('');
-      document.querySelectorAll('.search-hit').forEach((el) => el.onclick = () => act('pick', { trackId: el.dataset.id, title: el.dataset.title }));
-    };
-    $('go').onclick = run; $('q').onkeydown = (e) => { if (e.key === 'Enter') run(); };
+  if (tab === 'browse') {
+    const grid = ui.loading ? Array.from({ length: 8 }, () => '<div class="skeleton"></div>').join('')
+      : (ui.results || []).map((r, i) => `<button class="tile ${ui.sel && ui.sel.url === r.url ? 'sel' : ''}" data-act="pick-scene" data-i="${i}" aria-label="Choose this scene">
+          <img src="${esc(r.thumb)}" alt="${esc(r.alt || '')}" loading="lazy">${r.kind === 'video' ? '<span class="play">▶ clip</span>' : ''}</button>`).join('');
+    body = `<div class="row tabs" style="flex-wrap:nowrap"><button class="${ui.type === 'image' ? 'on' : ''}" data-act="type" data-t="image">Photos</button><button class="${ui.type === 'video' ? 'on' : ''}" data-act="type" data-t="video">Videos</button></div>
+      <div class="row"><input class="grow" data-bind="q" value="${esc(ui.q)}" placeholder="Search scenes… (rain, road trip, dance)"><button data-act="browse">Search</button></div>
+      <div class="grid">${grid || '<small>No results. Try another search.</small>'}</div>`;
+  } else if (tab === 'link') {
+    body = `<input data-bind="url" value="${esc(ui.url)}" placeholder="Paste an image, video (mp4) or YouTube link"><button data-act="use-link">Use this link</button>`;
+  } else if (tab === 'upload') {
+    body = `<input type="file" id="file" accept="image/png,image/jpeg,image/gif,image/webp"><small>Photos are resized to fit automatically.</small>`;
+  } else {
+    body = `<textarea data-bind="text" rows="2" maxlength="200" placeholder="Describe the scene…">${esc(ui.text)}</textarea><button data-act="rand">🎲 Surprise me</button>`;
   }
+  return `<div class="card stack"><h2>${state.phase === 'results' ? 'Next scene' : 'Choose a scene'}</h2>
+    <div class="tabs">${tabs.map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-act="tab" data-t="${k}">${l}</button>`).join('')}</div>
+    ${body}${selPreview()}
+    ${ui.sel && ui.sel.kind !== 'text' ? `<input data-bind="cap" value="${esc(ui.cap)}" maxlength="200" placeholder="Optional caption">` : ''}
+    <button class="primary block" data-act="start" ${ui.sel || ui.text.trim() ? '' : 'disabled'}>Start round</button></div>`;
 }
 
-fetch((window.SCOREIT_SERVER || '') + '/api/config').then((r) => r.json()).then((c) => { cfg = c; }).catch(() => {});
+function waitHtml(msg) { return `<div class="card wait"><span class="dots"><span></span><span></span><span></span></span>${msg}</div>`; }
+
+function pickingHtml() {
+  const my = state.myPick;
+  const tabs = cfg.search ? `<div class="tabs"><button class="${ui.pickTab === 'link' ? 'on' : ''}" data-act="ptab" data-t="link">Paste link</button><button class="${ui.pickTab === 'search' ? 'on' : ''}" data-act="ptab" data-t="search">Search</button></div>` : '';
+  const input = ui.pickTab === 'search' && cfg.search
+    ? `<div class="row"><input class="grow" data-bind="sq" value="${esc(ui.sq)}" placeholder="Song or artist"><button data-act="song-search">Search</button></div>
+       <div>${(ui.hits || []).map((h) => `<div class="hit" data-act="pick-song" data-id="${esc(h.id)}" data-title="${esc(h.title + ' — ' + h.artist)}"><img src="${esc(h.thumb)}" alt=""><div><b>${esc(h.title)}</b><br><small>${esc(h.artist)}</small></div></div>`).join('')}</div>`
+    : `<div class="row"><input class="grow" data-bind="link" value="${esc(ui.link)}" placeholder="https://open.spotify.com/track/…"><button class="primary" data-act="submit-link">Lock it in</button></div>
+       <small>In Spotify: ••• → Share → Copy Song Link</small>`;
+  return `<div class="card stack"><h2>Your pick</h2>
+    ${my ? `<div class="song">${embed(my.trackId)}</div><small>✅ Locked in. You can change it until voting starts.</small>` : ''}
+    ${tabs}${input}</div>
+    ${state.me.isHost ? `<button class="primary block" data-act="tovote">Start voting · <span data-count="picked"></span> picked</button>` : waitHtml('Waiting for the host to start voting · <span data-count="picked"></span> picked')}`;
+}
+
+function votingHtml() {
+  const cards = state.picks.map((p) => `<div class="card song"><h2 style="margin-bottom:8px">${p.mine ? 'Your song' : 'Song'}</h2>${embed(p.trackId)}
+    <div class="votebar"><small>${p.mine ? "You can't vote for yourself" : 'Does it fit the scene?'}</small>
+    ${p.mine ? '' : `<button class="votebtn" data-act="vote" data-id="${esc(p.id)}">Vote</button>`}</div></div>`).join('');
+  return `<div class="stagger">${cards}</div>
+    ${state.me.isHost ? `<button class="primary block" data-act="toresults">Reveal results · <span data-count="voted"></span> voted</button>` : waitHtml('Votes in: <span data-count="voted"></span>')}`;
+}
+
+function resultsHtml() {
+  const cards = state.picks.map((p, i) => `<div class="res ${i === 0 && p.voters.length ? 'top' : ''}">${embed(p.trackId)}
+    <div class="votebar"><div><b>${i === 0 && p.voters.length ? '🏆 ' : ''}${esc(p.author)}</b> <small>picked ${esc(p.title)}</small><br><small>${p.voters.length ? 'Votes from ' + p.voters.map(esc).join(', ') : 'No votes'}</small></div>
+    <div class="pts">+${p.voters.length * 100}</div></div></div>`).join('');
+  return `<h2>Results</h2><div class="stagger">${cards}</div>`;
+}
+
+function actionHtml() {
+  const host = state.me.isHost;
+  if (state.phase === 'setup') return host ? setupHtml() : waitHtml('Waiting for the host to choose a scene…');
+  if (state.phase === 'picking') return pickingHtml();
+  if (state.phase === 'voting') return votingHtml();
+  return resultsHtml() + (host ? setupHtml() : waitHtml('Waiting for the host to pick the next scene…'));
+}
+
+/* ---------- home ---------- */
+function renderHome() {
+  if (last.home) return; last.home = true; inRoom = false;
+  $app.innerHTML = `<div class="enter"><h1>Score <span>It</span></h1><p class="sub">Pick the perfect song for the scene. Friends vote on whose soundtrack nails it.</p>
+  <div class="card stack"><h2>Your name</h2><input data-bind="name" id="name" maxlength="20" placeholder="e.g. Quinn" autocomplete="nickname" value="${esc(ui.name)}">
+    <button class="primary block" data-act="create">Host a new session</button></div>
+  <div class="card stack"><h2>Join a session</h2><div class="row"><input class="grow" data-bind="code" id="code" maxlength="4" placeholder="CODE" style="text-transform:uppercase;letter-spacing:6px;text-align:center;font-weight:700" value="${esc(ui.code)}"><button data-act="join">Join</button></div></div>
+  <p class="err" id="err" role="alert">${esc(ui.err)}</p></div>`;
+}
+
+/* ---------- room render ---------- */
+function render() {
+  if (!session || !state) { renderHome(); return; }
+  delete last.home;
+  if (!inRoom) {
+    inRoom = true;
+    $app.innerHTML = `<div id="s-head"></div><section id="s-stage"></section><section id="s-action"></section><section id="s-players"></section><p class="err" id="err" role="alert"></p>`;
+    ['s-head', 's-stage', 's-action', 's-players'].forEach((k) => { delete last[k]; });
+  }
+  const phaseKey = state.phase + ':' + state.round;
+  setSection('s-head', headHtml(), 'h');
+  setSection('s-stage', stageHtml(), 'scene' + state.round + JSON.stringify(state.scene || {}).length);
+  setSection('s-action', actionHtml(), phaseKey);
+  setSection('s-players', playersHtml(), 'p');
+  patchCounts(); autoLoadBrowse();
+  if (phaseKey !== lastPhaseKey) {
+    if (state.phase === 'results' && state.picks[0] && state.picks[0].voters.length) confetti();
+    if (state.phase === 'picking' || state.phase === 'setup') { ui.sel = null; ui.cap = ''; }
+    if (lastPhaseKey && state.phase !== 'setup') window.scrollTo({ top: 0, behavior: 'smooth' });
+    lastPhaseKey = phaseKey;
+  }
+  setErr(ui.err);
+}
+
+function patchCounts() {
+  const n = (k) => state.players.filter((p) => p[k]).length + '/' + state.players.length;
+  document.querySelectorAll('[data-count=picked]').forEach((el) => { el.textContent = n('picked'); });
+  document.querySelectorAll('[data-count=voted]').forEach((el) => { el.textContent = n('voted'); });
+  const btn = document.querySelector('[data-act=tovote]'); if (btn) btn.disabled = !state.players.some((p) => p.picked);
+  document.querySelectorAll('[data-pid]').forEach((el) => {
+    const to = Number(el.dataset.score), prev = scoreMemo[el.dataset.pid];
+    if (prev !== undefined && prev !== to) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+    scoreMemo[el.dataset.pid] = to;
+  });
+  // vote buttons are patched in place so the Spotify players never reload mid-song
+  document.querySelectorAll('[data-act=vote]').forEach((b) => {
+    const on = state.myVote === b.dataset.id;
+    b.classList.toggle('voted', on); b.textContent = on ? '✓ Voted' : 'Vote';
+  });
+}
+const scoreMemo = {};
+
+function confetti() {
+  const box = document.getElementById('confetti'); const cols = ['#1ed760', '#ffd166', '#7c5cff', '#ff7eb6', '#5ec8ff'];
+  for (let i = 0; i < 48; i++) {
+    const p = document.createElement('i');
+    p.style.cssText = `left:${Math.random() * 100}%;background:${cols[i % cols.length]};--x:${(Math.random() - .5) * 240}px;--r:${Math.random() * 720}deg;--d:${1.6 + Math.random() * 1.4}s;animation-delay:${Math.random() * .4}s`;
+    box.appendChild(p);
+  }
+  setTimeout(() => { box.textContent = ''; }, 3600);
+}
+
+/* ---------- scene browsing ---------- */
+async function browse() {
+  ui.loading = true; refreshAction();
+  try { ui.results = await api(`scenes?type=${ui.type}&q=${encodeURIComponent(ui.q.trim())}`); setErr(''); }
+  catch (e) { ui.results = []; setErr(e.message); }
+  ui.loading = false; refreshAction();
+}
+function refreshAction() { if (state) { setSection('s-action', actionHtml(), state.phase + ':' + state.round, true); patchCounts(); } }
+function effectiveTab() { return ui.tab || (cfg.scenes ? 'browse' : 'link'); }
+function autoLoadBrowse() {
+  const hostSetup = state.me.isHost && (state.phase === 'setup' || state.phase === 'results');
+  if (hostSetup && cfg.scenes && effectiveTab() === 'browse' && !ui.results && !ui.loading) browse();
+}
+
+function shrinkImage(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, 1600 / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      resolve(c.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = () => reject(new Error('Could not read that image'));
+    img.src = url;
+  });
+}
+
+function linkToScene(u) {
+  u = u.trim();
+  if (/youtu\.?be/.test(u)) return { kind:'youtube', url:u };
+  if (/\.(mp4|webm|mov)(\?|#|$)/i.test(u)) return { kind:'video', url:u };
+  return { kind:'image', url:u };
+}
+
+/* ---------- events (delegated so inputs keep focus) ---------- */
+document.addEventListener('input', (e) => { const k = e.target.dataset && e.target.dataset.bind; if (k) { ui[k] = e.target.value;
+  if (k === 'text') { const b = document.querySelector('[data-act=start]'); if (b) b.disabled = !(ui.sel || ui.text.trim()); } } });
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return; const k = e.target.dataset && e.target.dataset.bind;
+  const map = { q:'browse', sq:'song-search', link:'submit-link', url:'use-link', name:'create', code:'join' };
+  if (map[k]) document.querySelector(`[data-act=${map[k]}]`)?.click();
+});
+document.addEventListener('change', async (e) => {
+  if (e.target.id !== 'file' || !e.target.files[0]) return;
+  try { ui.sel = { kind:'image', url: await shrinkImage(e.target.files[0]), thumb: null }; ui.sel.thumb = ui.sel.url; refreshAction(); }
+  catch (err) { setErr(err.message); }
+});
+document.addEventListener('click', async (e) => {
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const a = el.dataset.act, d = el.dataset;
+  switch (a) {
+    case 'leave': return leave();
+    case 'copy': navigator.clipboard?.writeText(state.code).catch(() => {}); el.classList.add('bump'); return setTimeout(() => el.classList.remove('bump'), 600);
+    case 'create': case 'join': {
+      try { const r = await api(a, { name: ui.name, code: ui.code }); setErr(''); save({ code:r.code, pid:r.pid }); poll(true); } catch (er) { setErr(er.message); } return;
+    }
+    case 'tab': ui.tab = d.t; if (d.t === 'browse' && !ui.results) return browse(); return refreshAction();
+    case 'type': ui.type = d.t; ui.results = null; return browse();
+    case 'browse': return browse();
+    case 'pick-scene': ui.sel = ui.results[Number(d.i)]; return refreshAction();
+    case 'clear-scene': ui.sel = null; return refreshAction();
+    case 'use-link': if (!ui.url.trim()) return setErr('Paste a link first'); ui.sel = { ...linkToScene(ui.url), thumb: ui.url.trim() }; setErr(''); return refreshAction();
+    case 'rand': ui.text = PROMPTS[Math.floor(Math.random() * PROMPTS.length)]; return refreshAction();
+    case 'start': {
+      let scene = ui.sel;
+      if (!scene) scene = { kind:'text', caption: ui.text };
+      else scene = { ...scene, caption: ui.cap };
+      delete scene.thumb; ui.sel = null; ui.cap = ''; ui.text = '';
+      return act('scene', { scene });
+    }
+    case 'ptab': ui.pickTab = d.t; return refreshAction();
+    case 'submit-link': { const url = ui.link; ui.link = ''; document.activeElement?.blur(); return act('pick', { url }); }
+    case 'song-search': try { ui.hits = await api('search?q=' + encodeURIComponent(ui.sq)); setErr(''); } catch (er) { setErr(er.message); } return refreshAction();
+    case 'pick-song': return act('pick', { trackId: d.id, title: d.title }).then(() => { ui.hits = null; });
+    case 'vote': return act('vote', { target: d.id });
+    case 'tovote': return act('phase', { to:'voting' });
+    case 'toresults': return act('phase', { to:'results' });
+  }
+});
+
+fetch(API + 'config').then((r) => r.json()).then((c) => { cfg = c; if (state) refreshAction(); }).catch(() => {});
 render(); poll(true);
 </script>
 </body>

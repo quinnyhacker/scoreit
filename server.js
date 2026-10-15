@@ -66,6 +66,31 @@ async function search(q) {
   }));
 }
 
+// ---------- Pexels scene library (free stock photos + video) ----------
+// Set PEXELS_API_KEY (free at pexels.com/api). Pexels asks that credit be shown; scenes carry it.
+const HAS_PEXELS = !!process.env.PEXELS_API_KEY;
+async function pexels(urlPath) {
+  const r = await fetch('https://api.pexels.com' + urlPath, {
+    headers: { Authorization: process.env.PEXELS_API_KEY }, signal: AbortSignal.timeout(7000) });
+  if (!r.ok) throw new Error('pexels');
+  return r.json();
+}
+async function sceneSearch(q, type) {
+  if (type === 'video') {
+    const j = await pexels(`/videos/${q ? 'search?query=' + encodeURIComponent(q) + '&' : 'popular?'}per_page=12&orientation=landscape&size=medium`);
+    return (j.videos || []).map((v) => {
+      const files = (v.video_files || []).filter((f) => f.file_type === 'video/mp4' && f.width && f.width <= 1280)
+        .sort((a, b) => b.width - a.width);
+      if (!files.length) return null;
+      return { kind: 'video', url: files[0].link, poster: v.image, thumb: v.image,
+        credit: { name: (v.user || {}).name || 'Pexels', url: v.url } };
+    }).filter(Boolean);
+  }
+  const j = await pexels(`/v1/${q ? 'search?query=' + encodeURIComponent(q) + '&' : 'curated?'}per_page=12&orientation=landscape`);
+  return (j.photos || []).map((p) => ({ kind: 'image', url: p.src.large2x || p.src.large, thumb: p.src.medium,
+    credit: { name: p.photographer, url: p.url }, alt: p.alt || '' }));
+}
+
 // ---------- State views ----------
 function viewFor(room, pid) {
   const me = room.players[pid];
@@ -123,11 +148,25 @@ function validScene(s) {
     if (!caption) throw httpErr(400, 'Describe the scene');
     return { kind: 'text', caption };
   }
+  const httpsUrl = (u) => /^https:\/\/[^\s"'<>]+$/i.test(String(u || '')) ? String(u) : '';
+  const credit = s.credit && httpsUrl(s.credit.url)
+    ? { name: String(s.credit.name || 'Pexels').slice(0, 60).replace(/[<>]/g, ''), url: s.credit.url } : null;
   if (s.kind === 'image') {
     const url = String(s.url || '');
-    const ok = /^https:\/\/[^\s"'<>]+$/i.test(url) || /^data:image\/(png|jpeg|gif|webp);base64,[A-Za-z0-9+/=]+$/.test(url);
+    const ok = httpsUrl(url) || /^data:image\/(png|jpeg|gif|webp);base64,[A-Za-z0-9+/=]+$/.test(url);
     if (!ok) throw httpErr(400, 'Image must be an https URL or an uploaded png/jpeg/gif/webp');
-    return { kind: 'image', url, caption };
+    return { kind: 'image', url, caption, credit };
+  }
+  if (s.kind === 'video') {
+    const url = httpsUrl(s.url);
+    if (!url) throw httpErr(400, 'Video must be an https link to an mp4/webm file');
+    return { kind: 'video', url, poster: httpsUrl(s.poster), caption, credit };
+  }
+  if (s.kind === 'youtube') {
+    const m = /(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/))([A-Za-z0-9_-]{11})/.exec(String(s.url || ''))
+      || /^([A-Za-z0-9_-]{11})$/.exec(String(s.id || ''));
+    if (!m) throw httpErr(400, 'Paste a YouTube link');
+    return { kind: 'youtube', id: m[1], caption };
   }
   throw httpErr(400, 'Bad scene');
 }
@@ -201,7 +240,13 @@ async function handle(req, res) {
     if (Number(url.searchParams.get('v')) === room.v) return { unchanged: true };
     return viewFor(room, pid);
   }
-  if (key === 'GET /api/config') return { search: HAS_SEARCH };
+  if (key === 'GET /api/config') return { search: HAS_SEARCH, scenes: HAS_PEXELS };
+  if (key === 'GET /api/scenes') {
+    if (!HAS_PEXELS) throw httpErr(501, 'Scene library not configured');
+    const q = String(url.searchParams.get('q') || '').slice(0, 80).trim();
+    const type = url.searchParams.get('type') === 'video' ? 'video' : 'image';
+    try { return await sceneSearch(q, type); } catch { throw httpErr(502, 'Scene search failed'); }
+  }
   if (key === 'GET /api/search') {
     if (!HAS_SEARCH) throw httpErr(501, 'Search not configured');
     const q = String(url.searchParams.get('q') || '').slice(0, 100);
@@ -228,7 +273,7 @@ const ALLOWED = new Set(['capacitor://localhost', 'ionic://localhost', 'https://
 http.createServer(async (req, res) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Content-Security-Policy',
-    "default-src 'self'; img-src 'self' https: data:; frame-src https://open.spotify.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'");
+    "default-src 'self'; img-src 'self' https: data:; media-src https:; frame-src https://open.spotify.com https://www.youtube-nocookie.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'");
   const origin = req.headers.origin;
   if (origin && ALLOWED.has(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);

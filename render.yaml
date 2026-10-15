@@ -16,3 +16,6 @@ services:
         sync: false
       - key: SPOTIFY_CLIENT_SECRET
         sync: false
+      # Optional scene library (free stock photos + video from pexels.com/api).
+      - key: PEXELS_API_KEY
+        sync: false

@@ -18,6 +18,7 @@ Optional Spotify search: set `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` (sour
 1. Push this repo to a private GitHub repo.
 2. In Render: New > Blueprint > pick the repo. It reads `render.yaml` (Starter plan, one instance, health check `/healthz`).
 3. Optional Spotify search: add `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` in the Render dashboard.
+   Optional scene library (stock photos + video clips): add `PEXELS_API_KEY` (free at pexels.com/api). Without it, hosts can still paste image / mp4 / YouTube links, upload a photo, or describe a scene in text.
 4. Copy the service URL (`https://score-it-xxxx.onrender.com`) into `public/config.js` for the iOS build.
 
 ## Alternative: Azure App Service
