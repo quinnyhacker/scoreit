@@ -19,3 +19,6 @@ services:
       # Optional scene library (free stock photos + video from pexels.com/api).
       - key: PEXELS_API_KEY
         sync: false
+      # Alternative scene library if Pexels keys are unavailable (pixabay.com/api/docs).
+      - key: PIXABAY_API_KEY
+        sync: false

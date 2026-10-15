@@ -301,7 +301,7 @@ function sceneMedia(s) {
 function stageHtml() {
   const s = state.scene;
   if (!s) return `<div class="stage text empty"><p>${icon('image')}Choose a scene to begin</p></div>`;
-  const credit = s.credit ? `<a href="${esc(s.credit.url)}" target="_blank" rel="noopener noreferrer">${esc(s.credit.name)} / Pexels</a>` : '';
+  const credit = s.credit ? `<a href="${esc(s.credit.url)}" target="_blank" rel="noopener noreferrer">${esc(s.credit.name)} / ${esc(s.credit.source || 'Pexels')}</a>` : '';
   return `<div class="scene-label"><span class="label">Scene ${pad(state.round)}</span></div>${sceneMedia(s)}
     ${(s.kind !== 'text' && s.caption) || credit ? `<div class="scene-meta"><span class="cap">${s.kind === 'text' ? '' : esc(s.caption)}</span>${credit}</div>` : ''}`;
 }

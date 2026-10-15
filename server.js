@@ -75,7 +75,24 @@ async function pexels(urlPath) {
   if (!r.ok) throw new Error('pexels');
   return r.json();
 }
+// Pixabay alternative (free key at pixabay.com/api/docs). Used when PEXELS_API_KEY is not set.
+const HAS_PIXABAY = !!process.env.PIXABAY_API_KEY;
+async function pixabaySearch(q, type) {
+  const qs = `key=${encodeURIComponent(process.env.PIXABAY_API_KEY)}&per_page=12&safesearch=true${q ? '&q=' + encodeURIComponent(q) : ''}`;
+  const isVideo = type === 'video';
+  const r = await fetch(`https://pixabay.com/api/${isVideo ? 'videos/' : ''}?${qs}${isVideo ? '' : '&image_type=photo&orientation=horizontal'}`, { signal: AbortSignal.timeout(7000) });
+  if (!r.ok) throw new Error('pixabay');
+  const j = await r.json();
+  return (j.hits || []).map((h) => {
+    const credit = { name: h.user || 'Pixabay', url: h.pageURL, source: 'Pixabay' };
+    if (!isVideo) return { kind: 'image', url: h.largeImageURL || h.webformatURL, thumb: h.webformatURL, credit, alt: h.tags || '' };
+    const v = (h.videos || {}); const f = v.medium || v.small || v.large;
+    if (!f || !f.url) return null;
+    return { kind: 'video', url: f.url, poster: f.thumbnail || '', thumb: f.thumbnail || '', credit };
+  }).filter(Boolean);
+}
 async function sceneSearch(q, type) {
+  if (!HAS_PEXELS) return pixabaySearch(q, type);
   if (type === 'video') {
     const j = await pexels(`/videos/${q ? 'search?query=' + encodeURIComponent(q) + '&' : 'popular?'}per_page=12&orientation=landscape&size=medium`);
     return (j.videos || []).map((v) => {
@@ -150,7 +167,7 @@ function validScene(s) {
   }
   const httpsUrl = (u) => /^https:\/\/[^\s"'<>]+$/i.test(String(u || '')) ? String(u) : '';
   const credit = s.credit && httpsUrl(s.credit.url)
-    ? { name: String(s.credit.name || 'Pexels').slice(0, 60).replace(/[<>]/g, ''), url: s.credit.url } : null;
+    ? { name: String(s.credit.name || 'Pexels').slice(0, 60).replace(/[<>]/g, ''), url: s.credit.url, source: s.credit.source === 'Pixabay' ? 'Pixabay' : 'Pexels' } : null;
   if (s.kind === 'image') {
     const url = String(s.url || '');
     const ok = httpsUrl(url) || /^data:image\/(png|jpeg|gif|webp);base64,[A-Za-z0-9+/=]+$/.test(url);
@@ -240,9 +257,9 @@ async function handle(req, res) {
     if (Number(url.searchParams.get('v')) === room.v) return { unchanged: true };
     return viewFor(room, pid);
   }
-  if (key === 'GET /api/config') return { search: HAS_SEARCH, scenes: HAS_PEXELS };
+  if (key === 'GET /api/config') return { search: HAS_SEARCH, scenes: HAS_PEXELS || HAS_PIXABAY };
   if (key === 'GET /api/scenes') {
-    if (!HAS_PEXELS) throw httpErr(501, 'Scene library not configured');
+    if (!HAS_PEXELS && !HAS_PIXABAY) throw httpErr(501, 'Scene library not configured');
     const q = String(url.searchParams.get('q') || '').slice(0, 80).trim();
     const type = url.searchParams.get('type') === 'video' ? 'video' : 'image';
     try { return await sceneSearch(q, type); } catch { throw httpErr(502, 'Scene search failed'); }
