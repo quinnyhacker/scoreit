@@ -16,7 +16,8 @@ services:
         sync: false
       - key: SPOTIFY_CLIENT_SECRET
         sync: false
-      # Optional scene library (free stock photos + video from pexels.com/api).
+      # Built-in scene library. Set PIXABAY_API_KEY and/or PEXELS_API_KEY (enter in the dashboard, never here).
+      # Written prompts work with no key at all.
       - key: PEXELS_API_KEY
         sync: false
       # Alternative scene library if Pexels keys are unavailable (pixabay.com/api/docs).

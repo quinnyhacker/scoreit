@@ -6,6 +6,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "test:e2e": "node scripts/e2e.js",
+    "mock:providers": "node scripts/mock-providers.js",
     "ios:sync": "cap sync ios"
   },
   "engines": {

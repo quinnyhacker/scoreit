@@ -3,3 +3,5 @@ ios/App/Pods/
 ios/DerivedData/
 .env
 *.log
+scoreit-cache/
+mock.log
